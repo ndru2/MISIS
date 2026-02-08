@@ -17,7 +17,9 @@ class SphereVisualizer:
                              points: np.ndarray, 
                              labels: Optional[List[str]] = None,
                              title: str = "Sphere Visualization",
-                             save_path: Optional[str] = None):
+                             save_path: Optional[str] = None,
+                             show_reference_spheres: bool = False,
+                             original_radii: Optional[np.ndarray] = None):
         if points.shape[1] < 3:
             logger.error("Для 3D визуализации нужно минимум 3 измерения")
             return
@@ -25,49 +27,79 @@ class SphereVisualizer:
 
         fig = go.Figure()
 
+        # Вычисляем радиусы точек для проверки (должны быть ~1.0)
+        radii = np.sqrt(x**2 + y**2 + z**2)
+        
+        # Используем исходные радиусы для цветовой кодировки, если доступны
+        color_values = original_radii if original_radii is not None else radii
+        
+        hover_text = []
+        if labels:
+            for i, label in enumerate(labels):
+                if original_radii is not None:
+                    hover_text.append(f"{label}<br>r_orig={original_radii[i]:.3f}<br>r_sphere={radii[i]:.3f}")
+                else:
+                    hover_text.append(f"{label}<br>r={radii[i]:.3f}")
+        else:
+            for i in range(len(points)):
+                if original_radii is not None:
+                    hover_text.append(f"Point {i}<br>r_orig={original_radii[i]:.3f}<br>r_sphere={radii[i]:.3f}")
+                else:
+                    hover_text.append(f"Point {i}<br>r={radii[i]:.3f}")
 
-        hover_text = labels if labels else [f"Point {i}" for i in range(len(points))]
-
+        # Точки данных
         fig.add_trace(go.Scatter3d(
             x=x, y=y, z=z,
-            mode='markers',
+            mode='markers+text',
             marker=dict(
-                size=10,
-                color=np.arange(len(points)),
+                size=8,
+                color=color_values,
                 colorscale='Viridis',
-                showscale=False,
+                showscale=True,
+                colorbar=dict(
+                    title="Исходный r" if original_radii is not None else "Радиус r"
+                ),
                 line=dict(width=1, color='white')
             ),
+            text=[f"{i}" for i in range(len(points))],
+            textposition="top center",
+            textfont=dict(size=8),
             hovertext=hover_text,
             hoverinfo='text',
             name='Триплеты'
         ))
 
+        # Рисуем единичную сферу
         u = np.linspace(0, 2 * np.pi, 50)
-        v = np.linspace(0, np.pi, 50)
+        v = np.linspace(0, np.pi, 30)
+        
         xs = np.outer(np.cos(u), np.sin(v))
         ys = np.outer(np.sin(u), np.sin(v))
         zs = np.outer(np.ones(np.size(u)), np.cos(v))
-
+        
         fig.add_trace(go.Surface(
             x=xs, y=ys, z=zs,
-            opacity=0.1,
-            colorscale='Greys',
+            opacity=0.15,
+            colorscale=[[0, 'lightgray'], [1, 'lightgray']],
             showscale=False,
-            hoverinfo='skip'
+            hoverinfo='skip',
+            name='Единичная сфера (r=1)'
         ))
 
+        # Фиксированный диапазон осей для единичной сферы
+        axis_range = 1.3
+        
         # Настройки макета
         fig.update_layout(
             title=title,
             scene=dict(
-                xaxis=dict(range=[-1.2, 1.2], title='X'),
-                yaxis=dict(range=[-1.2, 1.2], title='Y'),
-                zaxis=dict(range=[-1.2, 1.2], title='Z'),
+                xaxis=dict(range=[-axis_range, axis_range], title='X'),
+                yaxis=dict(range=[-axis_range, axis_range], title='Y'),
+                zaxis=dict(range=[-axis_range, axis_range], title='Z'),
                 aspectmode='cube'
             ),
-            width=900,
-            height=700
+            width=1000,
+            height=800
         )
 
         if save_path:
@@ -80,45 +112,58 @@ class SphereVisualizer:
                                  points: np.ndarray,
                                  labels: Optional[List[str]] = None,
                                  title: str = "Sphere Visualization",
-                                 save_path: Optional[str] = None):
-
+                                 save_path: Optional[str] = None,
+                                 show_reference_spheres: bool = False,
+                                 original_radii: Optional[np.ndarray] = None):
         if points.shape[1] < 3:
             logger.error("Для 3D визуализации нужно минимум 3 измерения")
             return
 
-        fig = plt.figure(figsize=(12, 10))
+        fig = plt.figure(figsize=(14, 12))
         ax = fig.add_subplot(111, projection='3d')
 
+        x, y, z = points[:, 0], points[:, 1], points[:, 2]
+        
+        # Вычисляем радиусы точек для проверки (должны быть ~1.0)
+        radii = np.sqrt(x**2 + y**2 + z**2)
+        
+        # Используем исходные радиусы для цветовой кодировки, если доступны
+        color_values = original_radii if original_radii is not None else radii
+
+        # Рисуем единичную сферу
         u = np.linspace(0, 2 * np.pi, 30)
         v = np.linspace(0, np.pi, 20)
+        
         xs = np.outer(np.cos(u), np.sin(v))
         ys = np.outer(np.sin(u), np.sin(v))
         zs = np.outer(np.ones(np.size(u)), np.cos(v))
+        
+        ax.plot_surface(xs, ys, zs, alpha=0.1, color='lightgray')
 
-        ax.plot_surface(xs, ys, zs, alpha=0.1, color='gray')
-
-        x, y, z = points[:, 0], points[:, 1], points[:, 2]
-        scatter = ax.scatter(x, y, z, c=np.arange(len(points)), 
+        # Точки данных
+        scatter = ax.scatter(x, y, z, c=color_values, 
                             cmap='viridis', s=100, edgecolors='black', linewidth=1)
 
+        # Метки
         if labels:
             for i, label in enumerate(labels):
-                ax.text(x[i], y[i], z[i], label, fontsize=9)
+                ax.text(x[i], y[i], z[i], f"{i}", fontsize=8)
 
-
+        # Оси
         ax.set_xlabel('X', fontsize=12)
         ax.set_ylabel('Y', fontsize=12)
         ax.set_zlabel('Z', fontsize=12)
         ax.set_title(title, fontsize=14)
 
+        # Colorbar
+        cbar_label = 'Исходный радиус r' if original_radii is not None else 'Радиус r'
+        plt.colorbar(scatter, ax=ax, label=cbar_label, shrink=0.5)
 
-        plt.colorbar(scatter, ax=ax, label='Point Index', shrink=0.5)
-
-
-        max_range = 1.2
-        ax.set_xlim([-max_range, max_range])
-        ax.set_ylim([-max_range, max_range])
-        ax.set_zlim([-max_range, max_range])
+        # Фиксированный диапазон для единичной сферы
+        axis_range = 1.3
+        ax.set_xlim([-axis_range, axis_range])
+        ax.set_ylim([-axis_range, axis_range])
+        ax.set_zlim([-axis_range, axis_range])
 
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
