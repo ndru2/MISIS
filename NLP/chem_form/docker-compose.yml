@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  chemical-extractor:
+    build: .
+    container_name: chemical-formulas-extractor
+    volumes:
+      - ./data:/app/data
+      - ./chemical_results:/app/chemical_results
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DATA_DIR=/app/data
+      - OUTPUT_DIR=/app/chemical_results
+    stdin_open: true
+    tty: true
