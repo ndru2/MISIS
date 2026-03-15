@@ -19,7 +19,8 @@ class SphereVisualizer:
                              title: str = "Sphere Visualization",
                              save_path: Optional[str] = None,
                              show_reference_spheres: bool = False,
-                             original_radii: Optional[np.ndarray] = None):
+                             original_radii: Optional[np.ndarray] = None,
+                             colors: Optional[List[str]] = None):
         if points.shape[1] < 3:
             logger.error("Для 3D визуализации нужно минимум 3 измерения")
             return
@@ -30,18 +31,45 @@ class SphereVisualizer:
         # Вычисляем радиусы точек для проверки (должны быть ~1.0)
         radii = np.sqrt(x**2 + y**2 + z**2)
         
-        # Используем исходные радиусы для цветовой кодировки, если доступны
-        color_values = original_radii if original_radii is not None else radii
+        # Определяем цветовую кодировку
+        if colors is not None:
+            # Используем пользовательские цвета (для разных POS)
+            marker_config = dict(
+                size=8,
+                color=colors,
+                line=dict(width=1, color='white')
+            )
+        else:
+            # Используем исходные радиусы для цветовой кодировки, если доступны
+            color_values = original_radii if original_radii is not None else radii
+            marker_config = dict(
+                size=8,
+                color=color_values,
+                colorscale='Viridis',
+                showscale=True,
+                colorbar=dict(
+                    title="Исходный r" if original_radii is not None else "Радиус r"
+                ),
+                line=dict(width=1, color='white')
+            )
         
         hover_text = []
+        text_labels = []  # Для отображения на точках
+        
         if labels:
             for i, label in enumerate(labels):
+                # Упрощенная метка для отображения (только лемма без POS)
+                short_label = label.split('(')[0].strip() if '(' in label else label
+                text_labels.append(short_label)
+                
+                # Полная информация в hover
                 if original_radii is not None:
                     hover_text.append(f"{label}<br>r_orig={original_radii[i]:.3f}<br>r_sphere={radii[i]:.3f}")
                 else:
                     hover_text.append(f"{label}<br>r={radii[i]:.3f}")
         else:
             for i in range(len(points)):
+                text_labels.append(f"{i}")
                 if original_radii is not None:
                     hover_text.append(f"Point {i}<br>r_orig={original_radii[i]:.3f}<br>r_sphere={radii[i]:.3f}")
                 else:
@@ -51,22 +79,13 @@ class SphereVisualizer:
         fig.add_trace(go.Scatter3d(
             x=x, y=y, z=z,
             mode='markers+text',
-            marker=dict(
-                size=8,
-                color=color_values,
-                colorscale='Viridis',
-                showscale=True,
-                colorbar=dict(
-                    title="Исходный r" if original_radii is not None else "Радиус r"
-                ),
-                line=dict(width=1, color='white')
-            ),
-            text=[f"{i}" for i in range(len(points))],
+            marker=marker_config,
+            text=text_labels,  # Используем названия токенов вместо номеров
             textposition="top center",
             textfont=dict(size=8),
             hovertext=hover_text,
             hoverinfo='text',
-            name='Триплеты'
+            name='Точки'
         ))
 
         # Рисуем единичную сферу
