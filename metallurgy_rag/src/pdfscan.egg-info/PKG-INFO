@@ -1,0 +1,30 @@
+Metadata-Version: 2.4
+Name: pdfscan
+Version: 0.2.0
+Summary: Разбор технических PDF по металлургии и подготовка корпуса к RAG
+Requires-Python: >=3.11
+Requires-Dist: pdfplumber
+Requires-Dist: pypdf
+Requires-Dist: pypdfium2
+Requires-Dist: unstructured[pdf]
+Requires-Dist: pandas
+Requires-Dist: numpy
+Requires-Dist: pyarrow
+Requires-Dist: duckdb
+Requires-Dist: openpyxl
+Requires-Dist: matplotlib
+Requires-Dist: httpx
+Requires-Dist: python-dotenv
+Provides-Extra: classify
+Requires-Dist: torch; extra == "classify"
+Requires-Dist: transformers; extra == "classify"
+Requires-Dist: scikit-learn; extra == "classify"
+Requires-Dist: joblib; extra == "classify"
+Provides-Extra: rag
+Requires-Dist: faiss-cpu; extra == "rag"
+Requires-Dist: rank-bm25; extra == "rag"
+Requires-Dist: nltk; extra == "rag"
+Requires-Dist: transformers; extra == "rag"
+Requires-Dist: torch; extra == "rag"
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"

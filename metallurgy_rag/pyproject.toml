@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pdfscan"
+version = "0.2.0"
+description = "Разбор технических PDF по металлургии и подготовка корпуса к RAG"
+requires-python = ">=3.11"
+
+# Здесь только то, что проект импортирует напрямую, без границ сверху: точные
+# версии всего окружения лежат в requirements/base.txt, и разделение
+# намеренное — список зависимостей читают люди, замороженный слепок ставит CI.
+dependencies = [
+    "pdfplumber",
+    "pypdf",
+    "pypdfium2",
+    "unstructured[pdf]",
+    "pandas",
+    "numpy",
+    "pyarrow",
+    "duckdb",
+    "openpyxl",
+    "matplotlib",
+    "httpx",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+# Классификация формул: BERT-признаки поверх градиентного бустинга.
+classify = ["torch", "transformers", "scikit-learn", "joblib"]
+# Векторизация и гибридный поиск.
+rag = ["faiss-cpu", "rank-bm25", "nltk", "transformers", "torch"]
+dev = ["pytest"]
+
+[project.scripts]
+# Этапы конвейера идут в том порядке, в котором их запускают.
+pdfscan-parse = "pdfscan.parse.extractor:main"
+pdfscan-prepare = "pdfscan.prepare.cli:main"
+pdfscan-formula-ocr = "pdfscan.formulas.ocr.cli:main"
+pdfscan-rag = "pdfscan.rag.build:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]

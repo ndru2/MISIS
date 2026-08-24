@@ -1,0 +1,41 @@
+# Окружение для повторного распознавания формул — отдельное, и это не выбор.
+#
+# paddle тянет свои сборки opencv, protobuf и onnxruntime, которые конфликтуют с
+# теми, что стоят у unstructured и torch в основном окружении. Ставить их рядом
+# кончается сломанным разбором PDF, поэтому этап живёт в своём venv, а с
+# остальным проектом общается файлами.
+#
+# PaddleX поддерживает Python с 3.8 по 3.13, а основное окружение проекта — на
+# 3.14, поэтому интерпретатор нужен отдельный. Собранное окружение работает на
+# 3.12 с paddlepaddle 3.0.0 и paddlex 3.7.2. Порядок целиком:
+#
+#     brew install python@3.12
+#     /opt/homebrew/opt/python@3.12/bin/python3.12 -m venv venv-formula
+#
+#     # 1. paddlepaddle — с индекса Paddle, на PyPI его для macOS нет
+#     venv-formula/bin/pip install paddlepaddle==3.0.0 \
+#         -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+#
+#     # 2. остальное из этого файла
+#     venv-formula/bin/pip install -r requirements/formula-ocr.txt
+#
+#     # 3. сам проект — иначе pdfscan не импортируется. Без зависимостей:
+#     #    ставить сюда unstructured и torch не нужно и вредно.
+#     venv-formula/bin/pip install -e . --no-deps
+#
+# Веса PP-FormulaNet_plus-L (около 700 МБ) скачиваются сами при первом вызове
+# в ~/.paddlex/official_models.
+#
+# Если сборки под macOS arm64 на индексе Paddle не окажется, остаётся обычное
+# `pip install paddlepaddle` с PyPI — версия будет другой, поэтому фактическую
+# после установки надо зафиксировать (см. конец файла).
+
+paddlex[ocr]>=3.0.0
+
+# Рендер страниц и вырезка рамок. Больше из тяжёлого модулю ничего не нужно:
+# отбор, оценка и запись обратно работают на стандартной библиотеке.
+pypdfium2>=5.0
+pillow>=11.0
+
+# После установки зафиксировать фактические версии:
+#     venv-formula/bin/pip freeze > requirements/formula-ocr.lock

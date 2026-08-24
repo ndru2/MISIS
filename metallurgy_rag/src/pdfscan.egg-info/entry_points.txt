@@ -1,0 +1,5 @@
+[console_scripts]
+pdfscan-formula-ocr = pdfscan.formulas.ocr.cli:main
+pdfscan-parse = pdfscan.parse.extractor:main
+pdfscan-prepare = pdfscan.prepare.cli:main
+pdfscan-rag = pdfscan.rag.build:main
