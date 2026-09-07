@@ -14,7 +14,7 @@ from pdfscan.rag.tables import (parse_table_html, table_rows_as_text,
 
 # Колонтитулы и подписи под рисунками не несут содержания, а номер страницы в
 # середине куска только мешает поиску.
-FURNITURE_TYPES = {'Header', 'Footer', 'PageBreak'}
+FURNITURE_TYPES = {'Header', 'Footer', 'PageBreak', 'PageNumber'}
 NOISE_TYPES = {'Figure'}
 
 # Заголовок раздела: короткая строка с номером или набранная прописными. У

@@ -14,6 +14,9 @@ REPORTS_DIR = paths.REPORTS_DIR
 
 RAW_BLOCKS = DATA_DIR / 'blocks_raw.parquet'
 CLEAN_BLOCKS = DATA_DIR / 'blocks_clean.parquet'
+MINERU_JSONL_DIR = DATA_DIR / 'mineru_blocks'
+MINERU_CLEAN_BLOCKS = DATA_DIR / 'mineru_clean.parquet'
+DOCUMENTS_JSON = DATA_DIR / 'documents.json'
 CHARLM_MODEL = DATA_DIR / 'charlm.npz'
 EXTRAS = DATA_DIR / 'clean_extras.json'
 
@@ -26,7 +29,7 @@ AUDIT_JSON = REPORTS_DIR / 'clean_audit.json'
 FORMULA_PREFIX = 'Formula'
 TABLE_TYPES = frozenset({'Table', 'TableOfContents'})
 VISUAL_TYPES = frozenset({'Image', 'Figure'})
-FURNITURE_TYPES = frozenset({'Header', 'Footer', 'PageBreak'})
+FURNITURE_TYPES = frozenset({'Header', 'Footer', 'PageBreak', 'PageNumber'})
 PROSE_TYPES = frozenset({
     'NarrativeText', 'ListItem', 'UncategorizedText', 'Title',
     'Caption', 'FigureCaption',
@@ -94,8 +97,8 @@ class CleanConfig:
     audit_sample_chars: int = 140
 
     drop_reasons: tuple = field(default=(
-        'empty', 'garbage', 'boilerplate', 'merged', 'duplicate', 'orphan',
-        'duplicate_document',
+        'empty', 'garbage', 'furniture', 'caption_only', 'boilerplate',
+        'merged', 'duplicate', 'orphan', 'duplicate_document',
     ))
 
 

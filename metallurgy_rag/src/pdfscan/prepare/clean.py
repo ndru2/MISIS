@@ -152,7 +152,7 @@ def clean_document(rows, model, cfg=config.DEFAULT) -> dict:
     return {'counts': counts, 'rules': Counter(rules), 'boilerplate': summary}
 
 
-def _drop_copies(out_path, copies: dict, progress=True) -> int:
+def _drop_copies(out_path, copies: dict, progress=True, schema=None) -> int:
     """Снимает отбор у документов, оказавшихся копиями других.
 
     Отдельным проходом по уже записанной таблице, потому что решение принимается
@@ -161,10 +161,11 @@ def _drop_copies(out_path, copies: dict, progress=True) -> int:
     файл, который затем встаёт на место исходного одним переименованием: обрыв
     на середине оставит прежнюю таблицу, а не половину новой.
     """
+    schema = schema or CLEAN_SCHEMA
     temporary = out_path.with_suffix(out_path.suffix + '.tmp')
     removed = 0
 
-    with store.DocumentWriter(temporary, CLEAN_SCHEMA) as writer:
+    with store.DocumentWriter(temporary, schema) as writer:
         for rows in store.iter_documents(out_path):
             winner = copies.get(rows[0]['doc_id'])
             if winner is not None:

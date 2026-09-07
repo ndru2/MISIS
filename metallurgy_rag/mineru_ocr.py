@@ -35,6 +35,11 @@ INPUT_DIR = Path(r"pdf")
 OUTPUT_DIR = Path("parsed_literature")
 
 BACKEND = "hybrid-engine"   # то же, что дефолт CLI и то, что вы уже проверили на качество
+# hybrid-engine на Linux сам берёт vLLM, если пакет установлен. vLLM V1 у вас
+# падает на Engine core initialization — HuggingFace transformers тот же VLM,
+# без отдельного subprocess. Не uninstall-ьте vllm: auto тогда может взять
+# lmdeploy. Вернуть vLLM: VLM_ENGINE = "auto".
+VLM_ENGINE = "transformers"  # auto | transformers | vllm
 PARSE_METHOD = "auto"
 LANG = "ru"                 # используется только если переключите BACKEND на "pipeline"
 
@@ -47,6 +52,21 @@ DONE_MARKER = ".done"
 FAILED_LOG = OUTPUT_DIR / "failed_files.log"
 
 _ILLEGAL_CHARS = re.compile(r'[<>:"/\\|?*]')
+
+
+def _force_vlm_engine(name: str) -> None:
+    """MinerU в do_parse всегда вызывает get_vlm_engine('auto').
+
+    Публичных backend вроде hybrid-transformers нет, поэтому подменяем
+    выбор Linux-движка. Патч живёт в модуле engine_utils — common уже
+    импортировал get_vlm_engine, но _select_linux_engine резолвится в рантайме.
+    """
+    if name in (None, "", "auto"):
+        return
+    import mineru.utils.engine_utils as engine_utils
+
+    engine_utils._select_linux_engine = lambda is_async=False, _n=name: _n
+    logger.info(f"VLM engine принудительно: {name} (не vLLM)")
 
 
 # ---- вспомогательное --------------------------------------------------------
@@ -118,7 +138,8 @@ def main() -> None:
         logger.warning(f"Пропуск — неподдерживаемый формат: {p.relative_to(INPUT_DIR)}")
 
     total = len(files)
-    logger.info(f"К обработке: {total} файлов (backend={BACKEND})")
+    _force_vlm_engine(VLM_ENGINE)
+    logger.info(f"К обработке: {total} файлов (backend={BACKEND}, vlm={VLM_ENGINE})")
 
     done = 0
     skipped_already = 0

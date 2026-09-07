@@ -288,6 +288,23 @@ class FormulaClassifier:
     def predict(self, formula: str, context: str, layout: dict | None = None) -> str:
         return self.predict_batch([formula], [context], [layout])[0]
 
+    def predict_proba_batch(self, formulas: list[str], contexts: list[str],
+                            layouts=None) -> list[dict[str, float]]:
+        """Вероятности по всем классам сразу.
+
+        Нужны там, где ответ модели проверяется отдельным условием: отклонив
+        первый класс, вызывающий берёт следующий по вероятности, а не гадает.
+        """
+        if not formulas:
+            return []
+        if self.boosting is None:
+            raise RuntimeError('Model is not loaded.')
+
+        x = self._build_feature_matrix(formulas, contexts, layouts, fit_char=False)
+        classes = self.label_encoder.classes_
+        return [{name: float(value) for name, value in zip(classes, row)}
+                for row in self.boosting.predict_proba(x)]
+
     def predict_proba(self, formula: str, context: str, layout: dict | None = None) -> dict[str, float]:
         if self.boosting is None:
             raise RuntimeError('Model is not loaded.')

@@ -11,7 +11,7 @@ import re
 import unicodedata
 
 from pdfscan.formulas.features import (CHEM_HOMOGLYPHS, chemical_parse,
-                                       normalize_notation)
+                                       normalize_notation, parse_species)
 
 # Названия элементов нужны, чтобы запрос словами находил запись символами.
 # Список ограничен тем, что встречается в металлургии и общей химии.
@@ -211,14 +211,27 @@ def extract_units(text: str) -> list[dict]:
     return found
 
 
+_OXIDE_TOKEN_RE = re.compile(r'(?:[A-Z][a-z]?(?:[0-9]+|[₀-₉]+)?){2,}')
+
+
 def chemistry_keywords(text: str) -> dict:
-    """Состав химической записи: символы элементов и их названия."""
-    parsed = chemical_parse(latinize_chemistry(text))
-    elements = sorted(set(parsed['elements']))
+    """Состав химической записи: символы элементов и их названия.
+
+    Кроме уравнения целиком смотрим отдельные вещества: ``SiO2`` в шапке
+    таблицы иначе остаётся невидимым для фильтра ``elements``.
+    """
+    flat = flatten_formula(latinize_chemistry(text or ''))
+    parsed = chemical_parse(flat)
+    elements = list(parsed['elements'])
+    for match in _OXIDE_TOKEN_RE.finditer(flat.replace('$', '')):
+        found = parse_species(match.group(0))
+        if found:
+            elements.extend(found[0])
+    unique = sorted(set(elements))
     names = []
-    for element in elements:
+    for element in unique:
         names.extend(ELEMENT_NAMES.get(element, ()))
-    return {'elements': elements, 'element_names': names}
+    return {'elements': unique, 'element_names': names}
 
 
 def normalize_record(record: dict) -> dict:
@@ -233,14 +246,17 @@ def normalize_record(record: dict) -> dict:
 
     if is_formula:
         search = flatten_formula(latinize_chemistry(cleaned))
+    elif 'Table' in block_type:
+        html = re.sub(r'<[^>]+>', ' ', record.get('table_html') or '')
+        search = flatten_formula(latinize_chemistry(clean_text(f'{cleaned} {html}')))
     else:
         search = cleaned
     record['text_search'] = search
 
-    record['units'] = extract_units(cleaned)
+    record['units'] = extract_units(cleaned) or extract_units(search)
 
-    if 'chemistry' in block_type:
-        record.update(chemistry_keywords(cleaned))
+    if is_formula or 'Table' in block_type or 'chemistry' in block_type:
+        record.update(chemistry_keywords(search))
     else:
         record['elements'] = []
         record['element_names'] = []

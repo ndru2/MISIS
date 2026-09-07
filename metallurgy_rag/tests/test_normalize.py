@@ -58,3 +58,13 @@ def test_formula_block_gets_a_searchable_string():
         'type': 'Formula (math)',
     })
     assert 'Weight loss' in record['text_search']
+
+
+def test_table_cells_expose_chemistry_for_filters():
+    record = normalize_record({
+        'text': 'Table I: Typical slag analysis, mass %',
+        'type': 'Table',
+        'table_html': '<table><tr><td>SiO2</td><td>Fe3O4</td></tr></table>',
+    })
+    assert 'Si' in record['elements']
+    assert 'Fe' in record['elements']

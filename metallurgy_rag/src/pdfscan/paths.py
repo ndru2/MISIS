@@ -16,6 +16,7 @@ ROOT = Path(os.environ.get('PDFSCAN_ROOT',
 
 PDF_DIR = Path(os.environ.get('PDFSCAN_PDF_DIR', ROOT / 'pdf'))
 OUT_DIR = Path(os.environ.get('PDFSCAN_OUT_DIR', ROOT / 'out'))
+PARSED_DIR = Path(os.environ.get('PDFSCAN_PARSED_DIR', ROOT / 'parsed_literature_1'))
 DATA_DIR = Path(os.environ.get('PDFSCAN_DATA_DIR', ROOT / 'data'))
 MODELS_DIR = Path(os.environ.get('PDFSCAN_MODELS_DIR', ROOT / 'models'))
 REPORTS_DIR = Path(os.environ.get('PDFSCAN_REPORTS_DIR', ROOT / 'reports'))

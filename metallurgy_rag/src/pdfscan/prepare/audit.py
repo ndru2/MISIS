@@ -68,6 +68,20 @@ def build(clean_path=None, out_md=None, out_json=None, cfg=config.DEFAULT) -> di
         'Отброшенное не удалено из таблицы: у каждого блока стоит `keep=false` и '
         'причина в `drop_reason`, поэтому порог можно менять без повторного прогона.',
         '',
+    ]
+
+    if extras.get('corpus') == 'mineru':
+        sections[0] = '# Аудит очистки корпуса MinerU'
+        sections += [
+            'Корпус пришёл из MinerU: пустые абзацы и колонтитулы снимаются по '
+            'типу блока, подпись без описания рисунка — `caption_only`, склейка '
+            '— через границу страницы, копии документов — MinHash. Символьную '
+            'модель OCR-шума на формулы и таблицы не гоняли: по гласным химия '
+            'неотличима от каши распознавания.',
+            '',
+        ]
+
+    sections += [
         '## Пороги этого прогона',
         '',
         _table(['порог', 'значение'],
@@ -88,43 +102,46 @@ def build(clean_path=None, out_md=None, out_json=None, cfg=config.DEFAULT) -> di
          for reason, number, volume in reasons]))
     sections.append('')
     sections.append('`merged` — не потеря: текст этих блоков перенесён в соседний '
-                    'блок, ссылка в `merged_into`.')
+                    'блок, ссылка в `merged_into`. `furniture` — номера страниц и '
+                    'колонтитулы MinerU. `caption_only` — «(a)», голый номер '
+                    'рисунка, деление оси без описания.')
     sections.append('')
 
-    sections += ['## Оценка шума по полосам', '',
-                 'Столбец «отброшено» показывает, что случится при текущем пороге '
-                 f'{cfg.garbage_threshold}. Примеры взяты только из блоков, '
-                 'собранных распознаванием: текстовый слой под подозрение не '
-                 'попадает.', '']
+    if not extras.get('skip_garbage'):
+        sections += ['## Оценка шума по полосам', '',
+                     'Столбец «отброшено» показывает, что случится при текущем пороге '
+                     f'{cfg.garbage_threshold}. Примеры взяты только из блоков, '
+                     'собранных распознаванием: текстовый слой под подозрение не '
+                     'попадает.', '']
 
-    bands = []
-    for step in range(10):
-        low, high = step / 10, (step + 1) / 10 + (0.001 if step == 9 else 0)
-        number, dropped = query("""
-            SELECT count(*), sum((NOT keep AND drop_reason = 'garbage')::int)
-            FROM blocks
-            WHERE garbage_score >= ? AND garbage_score < ? AND NOT reliable
-        """, (low, high))[0]
-        bands.append((f'{low:.1f}–{high:.1f}', number, dropped or 0))
-    sections.append(_table(['полоса', 'блоков (распознанных)', 'отброшено'], bands))
-    sections.append('')
+        bands = []
+        for step in range(10):
+            low, high = step / 10, (step + 1) / 10 + (0.001 if step == 9 else 0)
+            number, dropped = query("""
+                SELECT count(*), sum((NOT keep AND drop_reason = 'garbage')::int)
+                FROM blocks
+                WHERE garbage_score >= ? AND garbage_score < ? AND NOT reliable
+            """, (low, high))[0]
+            bands.append((f'{low:.1f}–{high:.1f}', number, dropped or 0))
+        sections.append(_table(['полоса', 'блоков (распознанных)', 'отброшено'], bands))
+        sections.append('')
 
-    for step in range(4, 10):
-        low, high = step / 10, (step + 1) / 10 + (0.001 if step == 9 else 0)
-        samples = query("""
-            SELECT round(garbage_score, 2), garbage_reason, type, text_source,
-                   substr(text_out, 1, ?)
-            FROM blocks
-            WHERE garbage_score >= ? AND garbage_score < ? AND NOT reliable
-            ORDER BY hash(block_id) LIMIT 6
-        """, (cfg.audit_sample_chars, low, high))
-        if not samples:
-            continue
-        sections.append(f'### Полоса {low:.1f}–{high:.1f}')
-        sections.append('')
-        sections.append(_table(
-            ['оценка', 'главный признак', 'тип', 'источник', 'текст'], samples))
-        sections.append('')
+        for step in range(4, 10):
+            low, high = step / 10, (step + 1) / 10 + (0.001 if step == 9 else 0)
+            samples = query("""
+                SELECT round(garbage_score, 2), garbage_reason, type, text_source,
+                       substr(text_out, 1, ?)
+                FROM blocks
+                WHERE garbage_score >= ? AND garbage_score < ? AND NOT reliable
+                ORDER BY hash(block_id) LIMIT 6
+            """, (cfg.audit_sample_chars, low, high))
+            if not samples:
+                continue
+            sections.append(f'### Полоса {low:.1f}–{high:.1f}')
+            sections.append('')
+            sections.append(_table(
+                ['оценка', 'главный признак', 'тип', 'источник', 'текст'], samples))
+            sections.append('')
 
     sections += ['## Что осталось, по типам блоков', '']
     types = query("""
@@ -234,19 +251,53 @@ def build(clean_path=None, out_md=None, out_json=None, cfg=config.DEFAULT) -> di
                  'Высокая доля отброшенного означает не строгий порог, а плохо '
                  'разобранный документ: скан без текстового слоя, картинки вместо '
                  'текста, сбой распознавания. Это список на пересмотр парсером.', '']
-    worst = query("""
-        SELECT doc_id, count(*), sum(keep::int),
-               sum((drop_reason = 'garbage')::int),
-               sum((drop_reason = 'boilerplate')::int)
-        FROM blocks GROUP BY doc_id
-        HAVING count(*) >= 50
-        ORDER BY sum(keep::int)::double / count(*) LIMIT 20
-    """)
-    sections.append(_table(
-        ['документ', 'блоков', 'осталось', 'доля', 'мусор', 'колонтитулы'],
-        [(doc_id, number, left, _share(left, number), noise, boiler)
-         for doc_id, number, left, noise, boiler in worst]))
+    if extras.get('corpus') == 'mineru':
+        sections[-2] = (
+            'У MinerU «потери» почти всегда — колонтитулы. Смотреть имеет смысл '
+            'на документы, где много `empty` / `duplicate`, а не `furniture`.')
+        worst = query("""
+            SELECT doc_id, count(*), sum(keep::int),
+                   sum((drop_reason = 'furniture')::int),
+                   sum((drop_reason = 'empty')::int),
+                   sum((drop_reason = 'duplicate_document')::int)
+            FROM blocks GROUP BY doc_id
+            HAVING count(*) >= 50
+            ORDER BY sum(keep::int)::double / count(*) LIMIT 20
+        """)
+        sections.append(_table(
+            ['документ', 'блоков', 'осталось', 'доля', 'обрамление', 'пустые', 'копия'],
+            [(doc_id, number, left, _share(left, number), furn, empty, copy)
+             for doc_id, number, left, furn, empty, copy in worst]))
+    else:
+        worst = query("""
+            SELECT doc_id, count(*), sum(keep::int),
+                   sum((drop_reason = 'garbage')::int),
+                   sum((drop_reason = 'boilerplate')::int)
+            FROM blocks GROUP BY doc_id
+            HAVING count(*) >= 50
+            ORDER BY sum(keep::int)::double / count(*) LIMIT 20
+        """)
+        sections.append(_table(
+            ['документ', 'блоков', 'осталось', 'доля', 'мусор', 'колонтитулы'],
+            [(doc_id, number, left, _share(left, number), noise, boiler)
+             for doc_id, number, left, noise, boiler in worst]))
     sections.append('')
+
+    meta_stats = extras.get('metadata') or {}
+    if meta_stats:
+        sections += ['## Метаданные документов', '',
+                     f'- с годом: **{meta_stats.get("with_year", 0)}** из {extras["documents"]}',
+                     f'- с авторами: **{meta_stats.get("with_authors", 0)}**',
+                     f'- с заголовком: **{meta_stats.get("with_title", 0)}**',
+                     '',
+                     _table(['тип', 'документов'],
+                            sorted((meta_stats.get('by_type') or {}).items())),
+                     '',
+                     _table(['язык', 'документов'],
+                            sorted((meta_stats.get('by_lang') or {}).items())),
+                     '',
+                     f'Полный список: `{config.DOCUMENTS_JSON.name}`.',
+                     '']
 
     # Считается по очищенному тексту, а не по исходному: в исходном `(cid:NN)`
     # встречается втрое чаще, но подавляющее большинство — глиф маркера списка,
