@@ -6,6 +6,8 @@
 заголовками столбцов, а таблица целиком остаётся для показа человеку.
 """
 
+from __future__ import annotations
+
 import re
 from html.parser import HTMLParser
 

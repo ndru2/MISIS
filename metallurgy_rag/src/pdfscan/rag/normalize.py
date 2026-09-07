@@ -7,6 +7,8 @@
 единицами измерения и состав химической записи.
 """
 
+from __future__ import annotations
+
 import re
 import unicodedata
 
