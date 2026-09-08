@@ -30,15 +30,23 @@ dependencies = [
 # Классификация формул: BERT-признаки поверх градиентного бустинга.
 classify = ["torch", "transformers", "scikit-learn", "joblib"]
 # Векторизация и гибридный поиск.
-rag = ["faiss-cpu", "rank-bm25", "nltk", "transformers", "torch"]
+# Векторизация и гибридный поиск.
+rag = ["faiss-cpu", "rank-bm25", "nltk", "transformers", "torch",
+       "qdrant-client", "sentence-transformers"]
+# Интерфейс отделён от RAG-контрактов: сервер можно развернуть без Streamlit,
+# а клиент — подключить к удалённому FastAPI.
+web = ["fastapi", "uvicorn[standard]", "streamlit"]
 dev = ["pytest"]
 
 [project.scripts]
 # Этапы конвейера идут в том порядке, в котором их запускают.
 pdfscan-parse = "pdfscan.parse.extractor:main"
+pdfscan-mineru = "pdfscan.parse.mineru:main"
 pdfscan-prepare = "pdfscan.prepare.cli:main"
+pdfscan-split = "pdfscan.prepare.split_corpus:main"
 pdfscan-formula-ocr = "pdfscan.formulas.ocr.cli:main"
 pdfscan-rag = "pdfscan.rag.build:main"
+pdfscan-rag-answer = "pdfscan.rag.answer:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

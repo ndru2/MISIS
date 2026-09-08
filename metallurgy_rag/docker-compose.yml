@@ -1,0 +1,75 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.13.4
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ${QDRANT_STORAGE_PATH:-./data/qdrant}:/qdrant/storage
+    restart: unless-stopped
+
+  api:
+    build: .
+    environment:
+      RAG_QDRANT_URL: http://qdrant:6333
+      RAG_QDRANT_COLLECTION: ${RAG_QDRANT_COLLECTION:-metallurgy_search_units}
+      RAG_LLM_PROVIDER: ${RAG_LLM_PROVIDER:-ollama}
+      RAG_LLM_MODEL: ${RAG_LLM_MODEL:-qwen3:8b}
+      RAG_OLLAMA_URL: ${RAG_OLLAMA_URL:-http://host.docker.internal:11434}
+      RAG_LLM_BASE_URL: ${RAG_LLM_BASE_URL:-}
+      RAG_LLM_TIMEOUT: ${RAG_LLM_TIMEOUT:-180}
+      RAG_LLM_API_KEY: ${RAG_LLM_API_KEY:-}
+      RAG_RERANKER_MODEL: ${RAG_RERANKER_MODEL:-BAAI/bge-reranker-v2-m3}
+      RAG_RELEVANCE_THRESHOLD: ${RAG_RELEVANCE_THRESHOLD:-0.55}
+    volumes:
+      # Sparse vocabulary belongs beside the Qdrant collection. It is tiny but
+      # required for stable sparse-query IDs after a container restart.
+      - ./data:/app/data
+      - hf_cache:/root/.cache/huggingface
+    ports:
+      - "8000:8000"
+    depends_on:
+      - qdrant
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  ui:
+    build: .
+    command: ["ui"]
+    environment:
+      RAG_API_URL: http://api:8000
+      RAG_LLM_MODEL: ${RAG_LLM_MODEL:-qwen3:8b}
+    ports:
+      - "8501:8501"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Explicit, one-shot indexing service. Use only after mounting a fresh
+  # corpus_split or when intentionally rebuilding the collection.
+  indexer:
+    build: .
+    command: ["index", "--recreate"]
+    profiles: ["tools"]
+    environment:
+      RAG_QDRANT_URL: http://qdrant:6333
+      HF_HOME: /root/.cache/huggingface
+    volumes:
+      - ./corpus_split:/app/corpus_split:ro
+      - ./data:/app/data
+      - hf_cache:/root/.cache/huggingface
+    depends_on:
+      - qdrant
+
+volumes:
+  hf_cache:

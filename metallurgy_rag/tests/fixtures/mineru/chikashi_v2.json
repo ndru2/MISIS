@@ -1,0 +1,153 @@
+[
+  [
+    {
+      "type": "title",
+      "content": {
+        "title_content": [
+          {"type": "text", "content": "Influence of slag composition on reduction control at KCM, Zambia"}
+        ],
+        "level": 1
+      },
+      "bbox": [186, 121, 811, 195]
+    },
+    {
+      "type": "paragraph",
+      "content": {
+        "paragraph_content": [
+          {"type": "text", "content": "H.M. Chikashi Konkola Copper Mines plc, Chingola, Zambia"}
+        ]
+      },
+      "bbox": [290, 231, 707, 267]
+    },
+    {
+      "type": "page_header",
+      "content": {
+        "page_header_content": [
+          {"type": "text", "content": "Southern African Pyrometallurgy 2011"}
+        ]
+      },
+      "bbox": [223, 42, 858, 74]
+    },
+    {
+      "type": "page_number",
+      "content": {
+        "page_number_content": [{"type": "text", "content": "185"}]
+      },
+      "bbox": [823, 932, 858, 947]
+    }
+  ],
+  [
+    {
+      "type": "paragraph",
+      "content": {
+        "paragraph_content": [
+          {"type": "text", "content": "Slag is tapped every 4 hours from the FSF to the SCF at "},
+          {"type": "equation_inline", "content": "1 2 9 0 ^ { \\mathrm { o } } \\mathrm { C } ."},
+          {"type": "text", "content": "A typical slag analysis from the FSF is shown in Table I."}
+        ]
+      },
+      "bbox": [134, 91, 862, 199]
+    },
+    {
+      "type": "table",
+      "content": {
+        "table_caption": [
+          {"type": "text", "content": "Table I: Typical analysis of Flash Smelting Furnace (FSF) slag, mass %"}
+        ],
+        "table_footnote": [],
+        "html": "<table><tr><td>Cu</td><td>Fe</td><td> $SiO_{2}$ </td><td>CaO</td><td>MgO</td><td>Co</td><td>S</td><td> $Al_{2}O_{3}$ </td><td> $Fe_{3}O_{4}$ </td></tr><tr><td>19.46</td><td>22.52</td><td>25.69</td><td>5.89</td><td>2.46</td><td>0.64</td><td>0.29</td><td>3.94</td><td>20.79</td></tr></table>",
+        "table_type": "simple_table"
+      },
+      "bbox": [137, 251, 847, 295]
+    }
+  ],
+  [
+    {
+      "type": "title",
+      "content": {
+        "title_content": [{"type": "text", "content": "Carbothermic reduction chemistry"}],
+        "level": 2
+      },
+      "bbox": [137, 80, 500, 100]
+    },
+    {
+      "type": "paragraph",
+      "content": {
+        "paragraph_content": [
+          {"type": "text", "content": "When coke is charged to the surface of slag, oxides are reduced as given by"}
+        ]
+      },
+      "bbox": [137, 110, 800, 140]
+    },
+    {
+      "type": "equation_interline",
+      "content": {
+        "math_content": "(\\mathrm{Fe} _ {3} \\mathrm{O} _ {4}) + \\mathrm{C} = (3 \\mathrm{FeO}) + \\mathrm{CO} (\\mathrm{g})\\tag{[1]}",
+        "math_type": "latex"
+      },
+      "bbox": [196, 586, 470, 606]
+    },
+    {
+      "type": "equation_interline",
+      "content": {
+        "math_content": "(\\mathrm{Cu} _ {2} \\mathrm{O}) + \\mathrm{C} = 2 \\mathrm{Cu} (\\mathrm{l}) + \\mathrm{CO} (\\mathrm{g})\\tag{[2]}",
+        "math_type": "latex"
+      },
+      "bbox": [196, 620, 470, 640]
+    }
+  ],
+  [
+    {
+      "type": "paragraph",
+      "content": {
+        "paragraph_content": [
+          {"type": "text", "content": "Copper losses in slag include unsettled droplets as given by Stokes law"}
+        ]
+      },
+      "bbox": [137, 80, 800, 110]
+    },
+    {
+      "type": "equation_interline",
+      "content": {
+        "math_content": "u = \\frac {(\\rho_ {c u} - \\rho_ {s l a g})}{1 8 \\eta_ {s l a g}} g d ^ {2}\\tag{[4]}",
+        "math_type": "latex"
+      },
+      "bbox": [137, 120, 500, 160]
+    },
+    {
+      "type": "paragraph",
+      "content": {
+        "paragraph_content": [
+          {"type": "text", "content": "where u = settling rate, m "},
+          {"type": "equation_inline", "content": "\\mathbf { S } ^ { - 1 }"}
+        ]
+      },
+      "bbox": [137, 170, 400, 190]
+    },
+    {
+      "type": "equation_interline",
+      "content": {
+        "math_content": "g = \\text { acceleration   due   to   gravity,   m   s } ^{-2}",
+        "math_type": "latex"
+      },
+      "bbox": [137, 200, 500, 220]
+    },
+    {
+      "type": "equation_interline",
+      "content": {
+        "math_content": "d = \\text { diameter   of   copper   droplet,   m }",
+        "math_type": "latex"
+      },
+      "bbox": [137, 230, 500, 250]
+    },
+    {
+      "type": "paragraph",
+      "content": {
+        "paragraph_content": [
+          {"type": "text", "content": "ρCu, ρslag = density of copper and slag respectively, kg m-3"}
+        ]
+      },
+      "bbox": [194, 260, 710, 280]
+    }
+  ]
+]

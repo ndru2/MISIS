@@ -1,0 +1,28 @@
+.git
+.DS_Store
+.env
+.env.*
+venv/
+venv-formula/
+mineru-venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Runtime data is mounted by Compose. Never bake source PDFs, the corpus,
+# Qdrant data or downloaded Hugging Face models into an application image.
+pdf/
+parsed_literature/
+parsed_literature_*/
+parsed_literature.zip
+out/
+corpus_split/
+data/
+rag_index/
+reports/
+models/
+datasets/
+*.xlsx

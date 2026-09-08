@@ -1,0 +1,35 @@
+# Секреты
+.env
+.env.*
+!.env.example
+
+# Окружения
+venv/
+venv-formula/
+mineru-venv/
+.venv/
+
+# Исходники и вывод парсера — пересобираются, в git не нужны
+pdf/
+parsed_literature/
+parsed_literature_1/
+parsed_literature_*/
+out/
+corpus_split/
+data/
+rag_index/
+reports/
+
+# Сборка пакета
+*.egg-info/
+build/
+dist/
+
+# Служебное
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.xlsx
+*.log

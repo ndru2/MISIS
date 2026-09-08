@@ -13,6 +13,7 @@ from pdfscan.prepare import config as prepare_config
 from pdfscan.prepare import store
 from pdfscan.rag import qdrant_index
 from pdfscan.rag import retrieval
+from pdfscan.rag.rerank import DEFAULT_RELEVANCE_THRESHOLD
 from pdfscan.rag.split_source import split_documents
 from pdfscan.rag.units import build_search_units
 
@@ -158,8 +159,10 @@ def command_qsearch(args):
 def command_retrieve(args):
     profile, evidence = retrieval.retrieve(
         args.query, k=args.k, url=args.url, collection=args.collection,
-        model_names=_model_names(args))
+        model_names=_model_names(args), relevance_threshold=args.relevance_threshold)
     print('каналы: ' + ', '.join(profile.channels))
+    print(f'RRF candidates: {profile.candidate_count}; после reranker: {profile.accepted_count}; '
+          f'порог: {profile.relevance_threshold:.2f}')
     if profile.filters:
         print('фильтры: ' + str(profile.filters))
     if not evidence:
@@ -167,7 +170,8 @@ def command_retrieve(args):
         return
     for position, item in enumerate(evidence, 1):
         pages = ', '.join(str(page) for page in item.pages)
-        print(f'\n{position}. [{item.unit_type}] {item.document_id} с. {pages}; {item.score:.5f}')
+        print(f'\n{position}. [{item.unit_type}] {item.document_id} с. {pages}; '
+              f'RRF={item.score:.5f}, relevance={item.relevance_score:.4f}')
         print(f'   evidence: {item.text[:350]}')
         if item.context and item.context != item.text:
             print(f'   context: {item.context[:500]}')
@@ -214,6 +218,7 @@ def main(argv=None):
     retrieve.add_argument('--url', default=qdrant_index.DEFAULT_URL)
     retrieve.add_argument('--collection', default=qdrant_index.DEFAULT_COLLECTION)
     retrieve.add_argument('-k', type=int, default=8)
+    retrieve.add_argument('--relevance-threshold', type=float, default=DEFAULT_RELEVANCE_THRESHOLD)
     _add_models(retrieve)
     retrieve.set_defaults(func=command_retrieve)
     args = parser.parse_args(argv)
