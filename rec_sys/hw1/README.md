@@ -11,10 +11,11 @@ Streamlit-приложение вычисляет косинусное подо�
 
 ## Запуск
 
-Перейдите в папку проекта:
+Клонируйте репозиторий и перейдите в папку проекта:
 
 ```bash
-cd /Users/andrejsuhanov/Applications/MISIS/rec_sys/hw1
+git clone https://github.com/ndru2/MISIS.git
+cd MISIS/rec_sys/hw1
 ```
 
 Создайте и активируйте виртуальное окружение:
