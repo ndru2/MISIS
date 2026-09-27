@@ -108,7 +108,7 @@ services:
       RAG_LLM_MODEL: ${RAG_LLM_MODEL:-qwen3:8b}
       RAG_LLM_BASE_URL: ${RAG_LLM_BASE_URL:-}
     ports:
-      - "8501:8501"
+      - "${UI_PORT:-8501}:8501"
     depends_on:
       api:
         condition: service_healthy
