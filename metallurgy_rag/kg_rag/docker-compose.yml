@@ -1,0 +1,35 @@
+# Neo4j с графом знаний по пирометаллургии.
+# При первом запуске служба `restore` разворачивает дамп из ./dump в пустую базу,
+# дальше запускается сама база: браузер http://localhost:7476, bolt на 7690.
+services:
+  restore:
+    image: neo4j:5
+    volumes:
+      - kg_neo4jdata:/data
+      - ./dump:/dump
+    entrypoint: >
+      sh -c "if [ ! -d /data/databases/neo4j ]; then
+               neo4j-admin database load neo4j --from-path=/dump --overwrite-destination=true;
+             fi"
+
+  neo4j:
+    image: neo4j:5
+    container_name: kg-rag-neo4j
+    restart: unless-stopped
+    depends_on:
+      restore:
+        condition: service_completed_successfully
+    environment:
+      NEO4J_AUTH: neo4j/neo4jpass
+      NEO4J_server_memory_heap_initial__size: 1g
+      NEO4J_server_memory_heap_max__size: 4g
+      NEO4J_server_memory_pagecache_size: 1g
+    ports:
+      - "7476:7474"
+      - "7690:7687"
+    volumes:
+      - kg_neo4jdata:/data
+
+volumes:
+  kg_neo4jdata:
+    name: kg_rag_neo4jdata

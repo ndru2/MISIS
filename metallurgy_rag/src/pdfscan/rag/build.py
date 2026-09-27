@@ -159,7 +159,8 @@ def command_qsearch(args):
 def command_retrieve(args):
     profile, evidence = retrieval.retrieve(
         args.query, k=args.k, url=args.url, collection=args.collection,
-        model_names=_model_names(args), relevance_threshold=args.relevance_threshold)
+        model_names=_model_names(args), relevance_threshold=args.relevance_threshold,
+        methods=args.methods)
     print('каналы: ' + ', '.join(profile.channels))
     print(f'RRF candidates: {profile.candidate_count}; после reranker: {profile.accepted_count}; '
           f'порог: {profile.relevance_threshold:.2f}')
@@ -215,6 +216,8 @@ def main(argv=None):
 
     retrieve = sub.add_parser('retrieve', help='router + parent-child Evidence для RAG')
     retrieve.add_argument('query')
+    retrieve.add_argument('--methods', nargs='+', choices=retrieval.METHODS,
+                          default=['vector', 'bm25'])
     retrieve.add_argument('--url', default=qdrant_index.DEFAULT_URL)
     retrieve.add_argument('--collection', default=qdrant_index.DEFAULT_COLLECTION)
     retrieve.add_argument('-k', type=int, default=8)

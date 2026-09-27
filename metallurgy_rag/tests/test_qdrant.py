@@ -45,3 +45,12 @@ def test_payload_clips_parent_text():
     })
     assert payload['parent_text'].endswith('…')
     assert len(payload['parent_text']) <= 4001
+
+
+def test_runtime_dense_model_can_be_pinned(monkeypatch):
+    from pdfscan.rag import qdrant_index
+
+    monkeypatch.setenv('RAG_DENSE_MODEL', 'intfloat/multilingual-e5-base')
+    assert set(qdrant_index._models(None).values()) == {
+        'intfloat/multilingual-e5-base'
+    }

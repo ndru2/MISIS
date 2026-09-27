@@ -155,6 +155,52 @@ def flatten_formula(text: str) -> str:
     return _SPACE_RE.sub(' ', text).strip()
 
 
+_FORMULA_MARK_RE = re.compile(r'[\\_^{}]')
+_STRIP_PUNCT = '.,;:()[]'
+
+
+def _looks_like_formula_token(token: str) -> bool:
+    """Можно ли безопасно латинизировать токен запроса.
+
+    ``latinize_chemistry`` небезопасна для целого текста (см. её докстринг),
+    поэтому применяем её только к тому, что либо содержит LaTeX-разметку
+    (``\\``, ``_``, ``^``, ``{}``), либо после перевода омографов становится
+    валидной химической записью по тем же правилам, что и в корпусе
+    (``parse_species`` требует символ элемента с большой буквы — обычные
+    русские слова, даже с большой буквы, через него не проходят: «Медь» →
+    «Meдь» → не парсится, а «Fe2O3»/«Н2О» → парсятся).
+    """
+    if _FORMULA_MARK_RE.search(token):
+        return True
+    stripped = token.strip(_STRIP_PUNCT)
+    if not stripped:
+        return False
+    return bool(parse_species(latinize_chemistry(stripped)))
+
+
+def normalize_query(text: str) -> str:
+    """Приводит формулоподобные фрагменты запроса к нотации корпуса.
+
+    Корпус проходит ``latinize_chemistry`` + ``flatten_formula`` перед
+    индексацией, но только внутри блоков-формул/таблиц (см.
+    ``normalize_record``), а не по всему тексту. Запрос пользователя не
+    размечен на блоки, поэтому здесь имитируем то же разделение на уровне
+    отдельных токенов: LaTeX (``\\tau``, ``H_{2}O``, ``\\frac{a}{b}``) и
+    химические записи (``Fe2O3``, кириллическое ``Н2О``) приводятся к той
+    же нотации, что в индексе; обычные слова — русские и английские —
+    остаются без изменений.
+    """
+    if not text:
+        return ''
+    tokens = text.split()
+    converted = [
+        flatten_formula(latinize_chemistry(token))
+        if _looks_like_formula_token(token) else token
+        for token in tokens
+    ]
+    return ' '.join(converted)
+
+
 def _parse_unit(raw: str):
     """Разбирает единицу измерения, в том числе составную."""
     raw = _SPACE_RE.sub('', raw)

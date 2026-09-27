@@ -87,6 +87,7 @@ rich==15.0.0
 safetensors==0.8.0
 scikit-learn==1.9.0
 scipy==1.18.0
+sentence-transformers==6.0.1
 setuptools==83.0.0
 shellingham==1.5.4
 six==1.17.0
@@ -110,3 +111,9 @@ unstructured_inference==1.2.0
 urllib3==2.7.0
 webencodings==0.5.1
 wrapt==2.3.0
+# Knowledge graph retrieval
+neo4j==5.28.6
+pymorphy3==2.0.6
+pymorphy3-dicts-ru==2.4.417150.4580142
+dawg2-python==0.9.0
+pytz==2026.3.post1

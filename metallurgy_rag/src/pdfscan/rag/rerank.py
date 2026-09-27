@@ -36,6 +36,9 @@ class CrossEncoderReranker:
     """Multilingual cross-encoder; загружается лениво только при первом запросе."""
 
     model_name: str = DEFAULT_RERANKER_MODEL
+    max_length: int = int(os.environ.get('RAG_RERANKER_MAX_LENGTH', '1024'))
+    batch_size: int = int(os.environ.get('RAG_RERANKER_BATCH_SIZE', '4'))
+    device: str | None = os.environ.get('RAG_RERANKER_DEVICE') or None
     _model: object | None = None
     _failed: bool = False
 
@@ -45,14 +48,16 @@ class CrossEncoderReranker:
         if not self._failed and self._model is None:
             try:
                 from sentence_transformers import CrossEncoder
-                self._model = CrossEncoder(self.model_name)
+                self._model = CrossEncoder(self.model_name, max_length=self.max_length,
+                                           device=self.device)
             except Exception:
                 # Ретривер остаётся рабочим offline: строгий lexical gate лучше,
                 # чем передать LLM произвольные top-K результаты.
                 self._failed = True
         if self._model is None:
             return [_lexical_score(query, text) for text in texts]
-        raw = self._model.predict([(query, text) for text in texts], show_progress_bar=False)
+        raw = self._model.predict([(query, text) for text in texts],
+                                  batch_size=self.batch_size, show_progress_bar=False)
         # BGE reranker возвращает logits; sigmoid переводит их в [0, 1], что
         # делает порог переносимым между запросами и видимым пользователю.
         return [1.0 / (1.0 + math.exp(-float(value))) for value in raw]

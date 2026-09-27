@@ -32,7 +32,7 @@ classify = ["torch", "transformers", "scikit-learn", "joblib"]
 # Векторизация и гибридный поиск.
 # Векторизация и гибридный поиск.
 rag = ["faiss-cpu", "rank-bm25", "nltk", "transformers", "torch",
-       "qdrant-client", "sentence-transformers"]
+       "qdrant-client", "sentence-transformers", "neo4j>=5,<6", "pymorphy3"]
 # Интерфейс отделён от RAG-контрактов: сервер можно развернуть без Streamlit,
 # а клиент — подключить к удалённому FastAPI.
 web = ["fastapi", "uvicorn[standard]", "streamlit"]

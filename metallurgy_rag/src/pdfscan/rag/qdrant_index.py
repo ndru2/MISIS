@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -90,11 +91,12 @@ class _DenseBackend:
         self.kind = 'encoder'
         try:
             from sentence_transformers import SentenceTransformer
-            self.model = SentenceTransformer(self.name)
+            self.model = SentenceTransformer(
+                self.name, device=os.getenv('RAG_EMBEDDING_DEVICE') or None)
             self.kind = 'st'
         except Exception:
             from pdfscan.rag.index import Encoder
-            self.model = Encoder(self.name)
+            self.model = Encoder(self.name, device=os.getenv('RAG_EMBEDDING_DEVICE') or None)
 
     def encode(self, texts, *, is_query=False, progress=False):
         from pdfscan.rag.index import PASSAGE_PREFIX, QUERY_PREFIX
@@ -133,7 +135,19 @@ def _point_id(unit_id: str) -> int:
 
 def _models(model_names: dict[str, str] | None) -> dict[str, str]:
     model_names = model_names or {}
-    return {kind: model_names.get(kind) or DEFAULT_MODEL for kind in VECTOR_NAMES}
+    # Existing collections may have been built with a model other than the
+    # code default. Runtime configuration must therefore be explicit, rather
+    # than silently switching to whichever model happens to be cached.
+    shared = os.environ.get('RAG_DENSE_MODEL')
+    return {
+        kind: (
+            model_names.get(kind)
+            or os.environ.get(f'RAG_{kind.upper()}_MODEL')
+            or shared
+            or DEFAULT_MODEL
+        )
+        for kind in VECTOR_NAMES
+    }
 
 
 def _encoded_units(units: list[dict], model_names: dict[str, str], progress: bool):
@@ -256,11 +270,11 @@ def retrieve_units(unit_ids: list[str], *, url=DEFAULT_URL, collection=DEFAULT_C
 
 def search(query: str, *, k=8, url=DEFAULT_URL, collection=DEFAULT_COLLECTION,
            model_names=None, vocab=None, filters=None, candidates=40, client=None,
-           vector_kinds=None):
-    """Sparse + выбранные dense spaces → RRF; графового retriever-а нет."""
+           vector_kinds=None, use_bm25=True, return_rankings=False):
+    """Выбранные dense/BM25 каналы; RRF или отдельные списки для общего fusion."""
     from qdrant_client import models
     configured = _models(model_names)
-    vector_kinds = vector_kinds or tuple(VECTOR_NAMES)
+    vector_kinds = tuple(VECTOR_NAMES) if vector_kinds is None else vector_kinds
     query_filter, prefetch = _filter(filters), []
     for kind in vector_kinds:
         if kind not in VECTOR_NAMES:
@@ -268,11 +282,23 @@ def search(query: str, *, k=8, url=DEFAULT_URL, collection=DEFAULT_COLLECTION,
         dense, _ = _encode([query], configured[kind], is_query=True)
         prefetch.append(models.Prefetch(query=dense[0], using=VECTOR_NAMES[kind],
                                         limit=candidates, filter=query_filter))
-    vocab = vocab or SparseVocab.load()
-    indices, values = vocab.encode(domain_tokenize(query))
-    prefetch.append(models.Prefetch(query=models.SparseVector(indices=indices, values=values),
-                                    using='bm25', limit=candidates, filter=query_filter))
+    if use_bm25:
+        vocab = vocab or SparseVocab.load()
+        indices, values = vocab.encode(domain_tokenize(query))
+        prefetch.append(models.Prefetch(query=models.SparseVector(indices=indices, values=values),
+                                        using='bm25', limit=candidates, filter=query_filter))
+    if not prefetch:
+        raise ValueError('Выберите хотя бы один канал Qdrant')
     client = client or _client(url)
+    if return_rankings:
+        rankings = {}
+        for item in prefetch:
+            result = client.query_points(collection_name=collection, query=item.query,
+                                         using=item.using, query_filter=query_filter,
+                                         limit=candidates, with_payload=True)
+            rankings[item.using] = [dict(point.payload or {}, score=float(point.score))
+                                    for point in result.points]
+        return rankings
     result = client.query_points(collection_name=collection, prefetch=prefetch,
                                  query=models.FusionQuery(fusion=models.Fusion.RRF),
                                  limit=k, with_payload=True)

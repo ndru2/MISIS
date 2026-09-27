@@ -6,7 +6,8 @@
 """
 
 from pdfscan.rag.normalize import (clean_text, flatten_formula,
-                                   join_spaced_letters, normalize_record)
+                                   join_spaced_letters, normalize_query,
+                                   normalize_record)
 
 
 def test_spaced_letters_are_joined_into_words():
@@ -68,3 +69,29 @@ def test_table_cells_expose_chemistry_for_filters():
     })
     assert 'Si' in record['elements']
     assert 'Fe' in record['elements']
+
+
+def test_normalize_query_leaves_plain_prose_untouched():
+    """Обычный русский вопрос не должен превратиться в смешанный текст."""
+    query = 'температура выше 1200 °C'
+    assert normalize_query(query) == query
+
+
+def test_normalize_query_leaves_capitalised_prose_untouched():
+    """Заглавная буква в начале предложения — не повод латинизировать."""
+    query = 'Как медь ведёт себя в шлаке?'
+    assert normalize_query(query) == query
+
+
+def test_normalize_query_unwraps_latex_formula():
+    assert normalize_query(r'\tau уравнение 5.22 K_{Ni/Ca}') == 'τ уравнение 5.22 KNi/Ca'
+    assert normalize_query(r'\frac{m1}{m2}') == '(m1)/(m2)'
+
+
+def test_normalize_query_latinizes_cyrillic_chemistry():
+    assert normalize_query('Н2О медь') == 'H2O медь'
+    assert normalize_query('плотность Fe2O3 в шлаке') == 'плотность Fe2O3 в шлаке'
+
+
+def test_normalize_query_does_not_touch_plain_numbers_or_units():
+    assert normalize_query('давление 20-е 1200 °C') == 'давление 20-е 1200 °C'

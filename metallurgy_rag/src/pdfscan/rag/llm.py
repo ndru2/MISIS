@@ -21,7 +21,8 @@ class ChatLLM:
 
     model: str
 
-    def generate(self, messages, *, temperature=0.1):  # pragma: no cover - contract only
+    def generate(self, messages, *, temperature=0.1):
+        # pragma: no cover - contract only
         raise NotImplementedError
 
 
@@ -31,17 +32,20 @@ class OllamaLLM:
     base_url: str = 'http://localhost:11434'
     timeout_seconds: float = 180.0
 
-    def generate(self, messages: list[dict[str, str]], *, temperature: float = 0.1) -> str:
+    def generate(self, messages: list[dict[str, str]], *,
+                 temperature: float = 0.1) -> str:
         try:
             response = httpx.post(
                 f'{self.base_url.rstrip("/")}/api/chat',
-                json={'model': self.model, 'messages': messages, 'stream': False,
+                json={'model': self.model, 'messages': messages,
+                      'stream': False,
                       'options': {'temperature': temperature}},
                 timeout=self.timeout_seconds)
             response.raise_for_status()
             text = (response.json().get('message') or {}).get('content') or ''
         except httpx.HTTPError as exc:
-            raise LLMError(f'Ollama недоступен по {self.base_url}: {exc}') from exc
+            raise LLMError(
+                f'Ollama недоступен по {self.base_url}: {exc}') from exc
         if not text.strip():
             raise LLMError('Ollama вернул пустой ответ')
         return text.strip()
@@ -54,34 +58,47 @@ class OpenAICompatibleLLM:
     api_key: str | None = None
     timeout_seconds: float = 180.0
 
-    def generate(self, messages: list[dict[str, str]], *, temperature: float = 0.1) -> str:
-        headers = {'Authorization': f'Bearer {self.api_key}'} if self.api_key else {}
+    def generate(self, messages: list[dict[str, str]], *,
+                 temperature: float = 0.1) -> str:
+        headers = {'Authorization': f'Bearer {self.api_key}'} \
+            if self.api_key else {}
         try:
             response = httpx.post(
-                f'{self.base_url.rstrip("/")}/chat/completions', headers=headers,
-                json={'model': self.model, 'messages': messages, 'temperature': temperature},
+                f'{self.base_url.rstrip("/")}/chat/completions',
+                headers=headers,
+                json={'model': self.model, 'messages': messages,
+                      'temperature': temperature},
                 timeout=self.timeout_seconds)
             response.raise_for_status()
-            text = (((response.json().get('choices') or [{}])[0].get('message') or {})
-                    .get('content') or '')
+            choices = response.json().get('choices') or [{}]
+            text = (choices[0].get('message') or {}).get('content') or ''
         except httpx.HTTPError as exc:
-            raise LLMError(f'LLM endpoint недоступен по {self.base_url}: {exc}') from exc
+            raise LLMError(
+                f'LLM endpoint недоступен по {self.base_url}: {exc}'
+            ) from exc
         if not text.strip():
             raise LLMError('LLM endpoint вернул пустой ответ')
         return text.strip()
 
 
-def create_llm(*, provider=None, model=None, base_url=None, timeout_seconds=180.0):
+def create_llm(*, provider=None, model=None, base_url=None,
+              timeout_seconds=180.0, api_key=None):
     provider = provider or os.environ.get('RAG_LLM_PROVIDER', 'ollama')
     model = model or os.environ.get('RAG_LLM_MODEL', 'qwen3:8b')
     if provider == 'ollama':
-        return OllamaLLM(model=model, base_url=base_url or os.environ.get(
-            'RAG_OLLAMA_URL', 'http://localhost:11434'), timeout_seconds=timeout_seconds)
+        return OllamaLLM(
+            model=model,
+            base_url=base_url or os.environ.get(
+                'RAG_OLLAMA_URL', 'http://localhost:11434'),
+            timeout_seconds=timeout_seconds)
     if provider == 'openai-compatible':
         endpoint = base_url or os.environ.get('RAG_LLM_BASE_URL')
         if not endpoint:
-            raise LLMError('Для openai-compatible задайте --base-url или RAG_LLM_BASE_URL')
+            raise LLMError(
+                'Для openai-compatible задайте --base-url или '
+                'RAG_LLM_BASE_URL')
         return OpenAICompatibleLLM(
-            model=model, base_url=endpoint, api_key=os.environ.get('RAG_LLM_API_KEY'),
+            model=model, base_url=endpoint,
+            api_key=api_key or os.environ.get('RAG_LLM_API_KEY'),
             timeout_seconds=timeout_seconds)
     raise LLMError(f'Неизвестный LLM provider: {provider}')

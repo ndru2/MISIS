@@ -17,6 +17,7 @@ parsed_literature_*/
 out/
 corpus_split/
 data/
+kg_rag/dump/
 rag_index/
 reports/
 

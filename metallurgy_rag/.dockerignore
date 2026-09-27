@@ -26,3 +26,5 @@ reports/
 models/
 datasets/
 *.xlsx
+
+kg_rag/
