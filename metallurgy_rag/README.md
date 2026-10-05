@@ -176,6 +176,35 @@ PYTHONPATH=src venv/bin/python -m pdfscan.rag.answer ask "ваш вопрос" \
 
 ### MetalGPT-1 и отдельный сильный Judge
 
+Для готового API без собственного GPU используйте Hugging Face Inference Providers:
+
+```dotenv
+RAG_LLM_PROVIDER=openai-compatible
+RAG_LLM_MODEL=nn-tech/MetalGPT-1:featherless-ai
+RAG_LLM_BASE_URL=https://router.huggingface.co/v1
+RAG_LLM_API_KEY=hf_your_token
+OPENROUTER_MODEL=qwen/qwen3.6-35b-a3b
+OPENROUTER_API_KEY=your_openrouter_key
+```
+
+HF-токен должен иметь разрешение `Make calls to Inference Providers`.
+API и UI при локальном запуске автоматически читают корневой `.env`;
+переменные окружения процесса имеют приоритет. При наличии обоих
+`OPENROUTER_*` Judge остаётся на указанной модели OpenRouter.
+После изменения `.env` перезапустите API и UI (в Docker: `docker compose up -d --build api ui`).
+
+Проверка конфигурации: `curl http://localhost:8000/health`.
+В результате должны быть `model=nn-tech/MetalGPT-1:featherless-ai` и
+`judge_model=qwen/qwen3.6-35b-a3b`. Для проверки токенов и реальных вызовов:
+
+```bash
+PYTHONPATH=src venv/bin/python scripts/check_llm_api.py
+```
+
+Проверка делает по одному короткому платному запросу к генератору и Judge,
+не выводит токены. Полный RAG проверяется вопросом в UI; в ответе видны
+модель Judge, оценка и источники.
+
 `nn-tech/MetalGPT-1` уже поддерживается через существующий provider
 `openai-compatible`: поднимите модель отдельным vLLM или SGLang сервером и
 укажите его OpenAI-compatible URL. Модель основана на Qwen3-32B и опубликована

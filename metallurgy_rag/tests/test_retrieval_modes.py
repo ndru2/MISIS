@@ -179,3 +179,18 @@ def test_reranker_bounds_model_inputs(monkeypatch):
     assert seen['max_length'] == 512
     assert seen['batch_size'] == 2
     assert seen['device'] == 'cpu'
+
+
+def test_ui_provider_switch_resets_model_and_url():
+    from streamlit.testing.v1 import AppTest
+    from pathlib import Path
+    app = AppTest.from_file(Path(__file__).resolve().parents[1] / 'src/pdfscan/web/app.py').run()
+    app.selectbox[0].set_value('ollama').run()
+    assert not app.exception
+    assert app.text_input(key='generator_model').value == 'qwen3:8b'
+    assert '11434' in app.text_input(key='generator_url').value
+    app.selectbox[0].set_value('openai-compatible').run()
+    assert not app.exception
+    assert app.text_input(key='generator_model').value == 'nn-tech/MetalGPT-1:featherless-ai'
+    assert app.text_input(key='generator_url').value == 'https://router.huggingface.co/v1'
+    assert app.slider[0].label == 'Число фрагментов источников'

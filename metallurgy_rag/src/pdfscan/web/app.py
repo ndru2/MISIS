@@ -7,6 +7,10 @@ import os
 import httpx
 import streamlit as st
 
+from pdfscan.env import load_project_env
+
+load_project_env()
+
 DEFAULT_API_URL = os.environ.get('RAG_API_URL', 'http://127.0.0.1:8000')
 
 
@@ -60,7 +64,7 @@ def show_answer(payload, *, on_fallback=None, key=''):
             f'Judge покрытие: {payload.get("judge_score", 0):.2f} · '
             f'модель judge: {payload.get("judge_model") or "—"} · '
             f'итераций: {payload.get("iterations", 0)} · '
-            f'evidence использовано: {payload.get("evidence_used", 0)}')
+            f'фрагментов использовано: {payload.get("evidence_used", 0)}')
         if payload.get('judge_missing'):
             st.caption('Judge отметил как не покрытое: ' + payload['judge_missing'])
     if citations:
@@ -81,23 +85,39 @@ def show_answer(payload, *, on_fallback=None, key=''):
 
 st.set_page_config(page_title='Metallurgy RAG', page_icon='⚗️', layout='wide')
 st.title('Metallurgy RAG')
-st.caption('Ответы Qwen с проверяемыми фрагментами корпуса: текст, формулы, таблицы и единицы.')
+st.caption('Ответы по проверяемым фрагментам корпуса: текст, формулы, таблицы и единицы.')
 
 with st.sidebar:
     st.header('Подключение')
     api_url = st.text_input('FastAPI URL', value=DEFAULT_API_URL).rstrip('/')
     providers = ('ollama', 'openai-compatible')
     default_provider = os.environ.get('RAG_LLM_PROVIDER', 'ollama')
+    def reset_generator():
+        if st.session_state.llm_provider == 'ollama':
+            st.session_state.generator_model = 'qwen3:8b'
+            st.session_state.generator_url = os.environ.get(
+                'RAG_OLLAMA_URL', 'http://localhost:11434')
+        else:
+            st.session_state.generator_model = 'nn-tech/MetalGPT-1:featherless-ai'
+            st.session_state.generator_url = 'https://router.huggingface.co/v1'
+
+    if 'llm_provider' not in st.session_state:
+        st.session_state.llm_provider = (
+            default_provider if default_provider in providers else 'ollama')
+        reset_generator()
+        st.session_state.generator_model = os.environ.get(
+            'RAG_LLM_MODEL') or st.session_state.generator_model
+        st.session_state.generator_url = os.environ.get(
+            'RAG_LLM_BASE_URL') or st.session_state.generator_url
     provider = st.selectbox(
-        'LLM provider', providers,
-        index=providers.index(default_provider) if default_provider in providers else 0,
-        help='MetalGPT через vLLM/SGLang использует openai-compatible.')
+        'LLM provider', providers, key='llm_provider', on_change=reset_generator,
+        help='Ollama — локальный Qwen; OpenAI-compatible — MetalGPT через Hugging Face.')
     model = st.text_input(
-        'Модель', value=os.environ.get('RAG_LLM_MODEL', 'qwen3:8b'),
-        help='Например: qwen3:8b или nn-tech/MetalGPT-1.')
+        'Модель', key='generator_model',
+        help='При смене провайдера подставляется соответствующая модель.')
     base_url = st.text_input(
-        'LLM URL (необязательно)', value=os.environ.get('RAG_LLM_BASE_URL', ''),
-        help='Для MetalGPT: URL отдельного vLLM/SGLang сервера, например http://GPU_SERVER:8001/v1.')
+        'LLM URL', key='generator_url',
+        help='Адрес автоматически меняется вместе с провайдером; его можно изменить вручную.')
     judge_model = st.text_input(
         'LLM Judge model (необязательно)', value='',
         help=('Пусто — использовать Judge из конфигурации API. Заполните model slug, '
@@ -109,7 +129,7 @@ with st.sidebar:
                                   'graph': 'Граф (Neo4j)'}[name])
     if not methods:
         st.warning('Выберите хотя бы один метод поиска.')
-    evidence_k = st.slider('Число Evidence', min_value=1, max_value=12, value=6)
+    evidence_k = st.slider('Число фрагментов источников', min_value=1, max_value=12, value=6)
     if st.button('Очистить диалог', use_container_width=True):
         st.session_state.messages = []
         st.rerun()
@@ -130,6 +150,13 @@ def ask_api(question: str, *, allow_llm_fallback: bool = False,
     if base_url.strip():
         request['base_url'] = base_url.strip()
     response = httpx.post(f'{api_url}/api/answer', json=request, timeout=240)
+    if response.is_error:
+        try:
+            detail = response.json().get('detail')
+        except ValueError:
+            detail = None
+        if detail:
+            raise RuntimeError(f'HTTP {response.status_code}: {detail}')
     response.raise_for_status()
     return response.json()
 
@@ -145,7 +172,7 @@ for index, item in enumerate(st.session_state.messages):
                 try:
                     st.session_state.messages[index]['payload'] = ask_api(
                         question, allow_llm_fallback=True, selected_methods=selected)
-                except httpx.HTTPError as exc:
+                except (httpx.HTTPError, RuntimeError) as exc:
                     st.error(f'Не удалось получить ответ от FastAPI: {exc}')
                     return
                 st.rerun()
@@ -160,10 +187,10 @@ if question:
     with st.chat_message('user'):
         st.markdown(question)
     with st.chat_message('assistant'):
-        with st.spinner('Ищу evidence и формирую ответ…'):
+        with st.spinner('Ищу фрагменты источников и формирую ответ…'):
             try:
                 payload = ask_api(question)
-            except httpx.HTTPError as exc:
+            except (httpx.HTTPError, RuntimeError) as exc:
                 st.error(f'Не удалось получить ответ от FastAPI: {exc}')
                 payload = None
         if payload:
@@ -173,7 +200,7 @@ if question:
                 try:
                     st.session_state.messages[index]['payload'] = ask_api(
                         question, allow_llm_fallback=True, selected_methods=selected)
-                except httpx.HTTPError as exc:
+                except (httpx.HTTPError, RuntimeError) as exc:
                     st.error(f'Не удалось получить ответ от FastAPI: {exc}')
                     return
                 st.rerun()

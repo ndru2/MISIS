@@ -160,6 +160,7 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
                     generate_llm_only_answer, request.question, llm,
                     profile=result.profile)
         except LLMError as exc:
+            LOG.warning('LLM request failed: %s', exc)
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         except Exception as exc:
             # Qdrant, embedding or unexpected runtime failure.

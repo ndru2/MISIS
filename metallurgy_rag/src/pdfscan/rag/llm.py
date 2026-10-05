@@ -67,15 +67,20 @@ class OpenAICompatibleLLM:
                 f'{self.base_url.rstrip("/")}/chat/completions',
                 headers=headers,
                 json={'model': self.model, 'messages': messages,
-                      'temperature': temperature},
+                      'temperature': temperature, 'stream': False},
                 timeout=self.timeout_seconds)
             response.raise_for_status()
             choices = response.json().get('choices') or [{}]
             text = (choices[0].get('message') or {}).get('content') or ''
         except httpx.HTTPError as exc:
             raise LLMError(
-                f'LLM endpoint недоступен по {self.base_url}: {exc}'
+                f'LLM {self.model} недоступна по {self.base_url}: '
+                f'{type(exc).__name__}: {exc}'
             ) from exc
+        except ValueError as exc:
+            raise LLMError(
+                f'LLM {self.model} вернула некорректный JSON-ответ '
+                f'по {self.base_url}') from exc
         if not text.strip():
             raise LLMError('LLM endpoint вернул пустой ответ')
         return text.strip()

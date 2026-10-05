@@ -52,6 +52,8 @@ def test_separate_judge_has_own_timeout_and_provider(monkeypatch):
 def test_kg_openrouter_variables_configure_independent_judge(monkeypatch):
     import pdfscan.web.api as api
 
+    monkeypatch.setenv('RAG_LLM_PROVIDER', 'ollama')
+    monkeypatch.setenv('RAG_LLM_MODEL', 'qwen3:8b')
     monkeypatch.delenv('RAG_JUDGE_PROVIDER', raising=False)
     monkeypatch.delenv('RAG_JUDGE_MODEL', raising=False)
     monkeypatch.delenv('RAG_JUDGE_BASE_URL', raising=False)

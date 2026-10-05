@@ -107,6 +107,7 @@ services:
       RAG_LLM_PROVIDER: ${RAG_LLM_PROVIDER:-ollama}
       RAG_LLM_MODEL: ${RAG_LLM_MODEL:-qwen3:8b}
       RAG_LLM_BASE_URL: ${RAG_LLM_BASE_URL:-}
+      RAG_OLLAMA_URL: ${RAG_OLLAMA_URL:-http://host.docker.internal:11434}
     ports:
       - "${UI_PORT:-8501}:8501"
     depends_on:
