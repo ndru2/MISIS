@@ -12,3 +12,4 @@ venv/
 .ruff_cache/
 ~$*.xlsx
 task2.py
+!hw2/task2.py
